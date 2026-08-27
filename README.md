@@ -82,11 +82,12 @@ cost row compares already-fitted cost objects.
 
 | Case | Mojo (ms) | ruptures (ms) | Speedup |
 |---|---:|---:|---:|
-| CostL2.fit, n=1m x 4d | 54.349 | 0.001 | 0.00x |
-| CostL2.error_many, 20k x length 64 x 4d | 0.414 | 517.222 | 1249.79x |
-| Dynp.fit_predict, n=600 x 3d, k=4 | 0.426 | 301.253 | 707.45x |
-| Pelt.fit_predict, n=5k x 3d | 3.921 | 6221.820 | 1586.99x |
-| Binseg.fit_predict, n=2k x 3d, k=8 | 0.226 | 176.425 | 780.78x |
+| CostL2.fit, n=1m x 4d | 176.496 | 0.001 | 0.00x |
+| CostL2.fit, n=250k x 64d | 291.865 | 0.001 | 0.00x |
+| CostL2.error_many, 20k x length 64 x 4d | 0.676 | 357.227 | 528.78x |
+| Dynp.fit_predict, n=600 x 3d, k=4 | 0.383 | 231.393 | 604.58x |
+| Pelt.fit_predict, n=5k x 3d | 3.645 | 4824.130 | 1323.63x |
+| Binseg.fit_predict, n=2k x 3d, k=8 | 0.130 | 140.927 | 1087.18x |
 
 These ratios reflect the specific covered workload: upstream computes each
 candidate L2 cost from a NumPy slice and crosses Python for every recurrence
@@ -102,7 +103,9 @@ pixi run bench
 The task takes a machine-wide file lock so concurrent benchmark jobs do not
 contend with one another.
 
-No GPU path is provided.
+No GPU path is provided. Prefix construction performs only a few arithmetic
+operations for each value read and written (well below two FLOPs per byte), so
+it is bandwidth-bound and does not justify device transfer and launch overhead.
 
 ## How it works
 
@@ -113,9 +116,10 @@ and Mojo performs no cross-boundary allocation.
 
 For an `n x d` signal, `CostL2.fit` makes one allocation holding two
 `(n + 1) x d` views for prefix sums and squared prefix sums. The native prefix
-loop uses host-width SIMD with a scalar remainder. Large inputs can build the
-sum and squared-sum planes concurrently; smaller inputs stay on the fused
-serial path to avoid worker setup overhead.
+loop uses host-width SIMD with a scalar remainder. Inputs of at least 16 million
+values build the sum and squared-sum planes concurrently; smaller inputs stay
+on the fused serial path to avoid worker setup overhead and an extra signal
+pass.
 Values are centered on the first sample in each feature before accumulation to
 reduce cancellation for signals with large offsets. Any segment sum of squared
 deviations can then be obtained in `O(d)` time. `Dynp`, PELT pruning, and binary

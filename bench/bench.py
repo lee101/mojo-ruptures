@@ -78,6 +78,24 @@ def cost_fit_case():
     return mojo_run, upstream_run
 
 
+def cost_fit_parallel_case():
+    signal = piecewise_signal(250_000, 64, seed=5)
+
+    def mojo_run():
+        return mojo.CostL2().fit(signal)
+
+    def upstream_run():
+        return upstream.costs.CostL2().fit(signal)
+
+    assert math.isclose(
+        mojo_run().error(123, 249_876),
+        upstream_run().error(123, 249_876),
+        rel_tol=1e-8,
+        abs_tol=1e-8,
+    )
+    return mojo_run, upstream_run
+
+
 def dynp_case():
     signal = piecewise_signal(600, 3, seed=1)
 
@@ -121,6 +139,7 @@ def binseg_case():
 
 CASES = [
     ("CostL2.fit, n=1m x 4d", cost_fit_case),
+    ("CostL2.fit, n=250k x 64d", cost_fit_parallel_case),
     ("CostL2.error_many, 20k x length 64 x 4d", cost_case),
     ("Dynp.fit_predict, n=600 x 3d, k=4", dynp_case),
     ("Pelt.fit_predict, n=5k x 3d", pelt_case),

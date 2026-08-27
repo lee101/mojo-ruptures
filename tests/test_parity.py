@@ -88,11 +88,11 @@ def test_cost_l2_large_input_parity(samples):
 
 def test_cost_l2_parallel_threshold_parity():
     rng = np.random.default_rng(43)
-    signal = rng.normal(size=(62_500, 64))
+    signal = rng.normal(size=(250_000, 64))
     ours = mojo.CostL2().fit(signal)
     theirs = upstream.costs.CostL2().fit(signal)
-    assert ours.error(113, 61_731) == pytest.approx(
-        theirs.error(113, 61_731), rel=1e-12, abs=1e-9
+    assert ours.error(113, 249_731) == pytest.approx(
+        theirs.error(113, 249_731), rel=1e-12, abs=1e-8
     )
 
 
