@@ -1,11 +1,9 @@
 """L2 change-point kernels exposed through a small C ABI."""
 
-from std.algorithm import parallelize
-from std.gpu.host import DeviceContext
 from std.sys.info import simd_width_of as simdwidthof
 
-comptime FPtr = UnsafePointer[Float64, AnyOrigin[mut=True]]
-comptime IPtr = UnsafePointer[Int64, AnyOrigin[mut=True]]
+comptime FPtr = Pointer[Float64, AnyOrigin[mut=True]]
+comptime IPtr = Pointer[Int64, AnyOrigin[mut=True]]
 
 
 def fp(addr: Int) -> FPtr:
@@ -74,19 +72,9 @@ def mr_l2_prefix(
     var sums = fp(sums_addr)
     var squares = fp(squares_addr)
     if samples * dims >= 4_000_000:
-        @parameter
-        def build_plane(plane: Int):
-            if plane == 0:
-                l2_prefix_plane[False](signal, sums, samples, dims)
-            else:
-                l2_prefix_plane[True](signal, squares, samples, dims)
-
-        try:
-            var context = DeviceContext(api="cpu")
-            parallelize[build_plane](2, 2, context)
-            return
-        except:
-            pass
+        l2_prefix_plane[False](signal, sums, samples, dims)
+        l2_prefix_plane[True](signal, squares, samples, dims)
+        return
 
     var vector_end = dims - dims % W
     for col in range(0, vector_end, W):
