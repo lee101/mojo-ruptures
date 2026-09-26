@@ -1,6 +1,5 @@
 """L2 change-point kernels exposed through a small C ABI."""
 
-from max.algorithm import parallelize
 from std.sys.info import simd_width_of as simdwidthof
 
 comptime FPtr = Pointer[Float64, AnyOrigin[mut=True]]
@@ -73,16 +72,9 @@ def mr_l2_prefix(
     var sums = fp(sums_addr)
     var squares = fp(squares_addr)
 
-    @__parameter
-    @__copy_capture(signal, sums, squares, samples, dims)
-    def prefix_plane(plane: Int):
-        if plane == 0:
-            l2_prefix_plane[False](signal, sums, samples, dims)
-        else:
-            l2_prefix_plane[True](signal, squares, samples, dims)
-
     if samples * dims >= 16_000_000:
-        parallelize[prefix_plane](2, 2)
+        l2_prefix_plane[False](signal, sums, samples, dims)
+        l2_prefix_plane[True](signal, squares, samples, dims)
         return
 
     var vector_end = dims - dims % W
